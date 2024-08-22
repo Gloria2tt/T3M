@@ -2,7 +2,7 @@ import os
 import sys
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 sys.path.append(os.getcwd())
 
 from tqdm import tqdm
@@ -28,7 +28,7 @@ from torch.utils import data
 from data_utils.get_j import to3d, get_joints
 
 
-def init_model(model_name, model_path, args, config):
+def init_model(model_name, model_path, args, config,bert_config,iteration):
     if model_name == 's2g_face':
         generator = s2g_face(
             args,
@@ -43,6 +43,8 @@ def init_model(model_name, model_path, args, config):
         generator = s2g_body_pixel(
             args,
             config,
+            bert_config,
+            iteration
         )
     elif model_name == 's2g_body_ae':
         generator = s2g_body_ae(
@@ -113,7 +115,7 @@ def body_loss(gt, prs):
 def test(test_loader, generator, FGD_handler, smplx_model, config):
     print('start testing')
 
-    am = Wav2Vec2Processor.from_pretrained("vitouphy/wav2vec2-xls-r-300m-phoneme")
+    am = Wav2Vec2Processor.from_pretrained("/mnt/nj-1/usr/xuanqing/pws/dataset/wav2vec2-xls-r-300m-phoneme")
     am_sr = 16000
 
     loss_dict = {}
@@ -129,7 +131,7 @@ def test(test_loader, generator, FGD_handler, smplx_model, config):
             id = bat['speaker'].to('cuda') - 20
             betas = bat['betas'][0].to('cuda').to(torch.float64)
             poses = torch.cat([poses, exp], dim=-2).transpose(-1, -2)
-
+            text_feat = bat["video"].to('cuda')
             cur_wav_file = bat['aud_file'][0]
 
             zero_face = torch.zeros([B, poses.shape[1], 103], device='cuda')
@@ -142,7 +144,8 @@ def test(test_loader, generator, FGD_handler, smplx_model, config):
                                             B=B,
                                             am=am,
                                             am_sr=am_sr,
-                                            frame=poses.shape[0]
+                                            frame=poses.shape[0],
+                                            text_feat=text_feat
                                             )
             pred = torch.tensor(pred, device='cuda')
 
@@ -215,10 +218,12 @@ def main():
     model_name = args.body_model_name
     # model_path = get_path(model_name, model_type)
     model_path = args.body_model_path
-    generator = init_model(model_name, model_path, args, config)
-
+    bert_config = args.bert_config
+    iteration = 100
+    generator = init_model(model_name, model_path, args, config,bert_config,iteration)
+    
     ae = init_model('s2g_body_ae', './experiments/feature_extractor.pth', args,
-                    config)
+                    config,bert_config,iteration)
     FGD_handler = EmbeddingSpaceEvaluator(ae, None, 'cuda')
 
     print('init smlpx model...')

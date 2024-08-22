@@ -223,9 +223,9 @@ class SmplxDataset():
                                           )"""
             from encodec import EncodecModel
             from pathlib import Path
-            model = EncodecModel.encodec_model_24khz(repository=Path("/mnt/nj-aigc/dataset/pengwenshuo/encodec")).to('cuda')
+            model = EncodecModel.encodec_model_24khz(repository=Path("/mnt/nj-1/usr/xuanqing/pws/dataset/encodec")).to('cuda')
             self.audio_feat = get_encodec(self.audio_fn,model)
-            self.encodec_token = get_encodec_token(self.audio_fn,model)
+            #self.encodec_token = get_encodec_token(self.audio_fn,model)
             
 
             #self.audio_feat = get_encodec()
@@ -267,7 +267,7 @@ class SmplxDataset():
                 if not self.context_info:
                     if not self.whole_video:
                         audio_feat = self.audio_feat[index:index + seq_len, ...]
-                        audio_token = self.encodec_token.transpose(1,0)[index:index+seq_len]
+                       #audio_token = self.encodec_token.transpose(1,0)[index:index+seq_len]
                         if audio_feat.shape[0] < seq_len:
                             audio_feat = np.pad(audio_feat, [[0, seq_len - audio_feat.shape[0]], [0, 0]],
                                                 mode='reflect')
@@ -304,61 +304,60 @@ class SmplxDataset():
                     if self.convert_to_6d:
                         if self.expression:
                             data_sample = {
-                                'poses': seq_data[:, :330].astype(np.float).transpose(1, 0),
-                                'expression': seq_data[:, 330:].astype(np.float).transpose(1, 0),
+                                'poses': seq_data[:, :330].astype(float).transpose(1, 0),
+                                'expression': seq_data[:, 330:].astype(float).transpose(1, 0),
                                 'video':self.video_input,
-                                # 'nzero': seq_data[:, 375:].astype(np.float).transpose(1, 0),
-                                'aud_feat': audio_feat.astype(np.float).transpose(1, 0),
+                                'aud_feat': audio_feat.astype(float).transpose(1, 0),
                                 'speaker': speaker_id[self.speaker],
                                 'betas': self.betas,
                                 'aud_file': self.audio_fn,
-                                "audio_token":audio_token.cpu().numpy()
+                                #"audio_token":audio_token.cpu().numpy()
                             }
                         else:
                             data_sample = {
-                                'poses': seq_data[:, :330].astype(np.float).transpose(1, 0),
-                                'nzero': seq_data[:, 330:].astype(np.float).transpose(1, 0),
-                                'aud_feat': audio_feat.astype(np.float).transpose(1, 0),
+                                'poses': seq_data[:, :330].astype(float).transpose(1, 0),
+                                'nzero': seq_data[:, 330:].astype(float).transpose(1, 0),
+                                'aud_feat': audio_feat.astype(float).transpose(1, 0),
                                 'speaker': speaker_id[self.speaker],
                                 'video':self.video_input,
                                 'betas': self.betas,
-                                "audio_token":audio_token.astype(np.float).transpose(1,0)
+                                #"audio_token":audio_token.astype(np.float).transpose(1,0)
                             }
                     else:
                         if self.expression:
                             data_sample = {
-                                'poses': seq_data[:, :165].astype(np.float).transpose(1, 0),
-                                'expression': seq_data[:, 165:].astype(np.float).transpose(1, 0),
-                                'aud_feat': audio_feat.astype(np.float).transpose(1, 0),
+                                'poses': seq_data[:, :165].astype(float).transpose(1, 0),
+                                'expression': seq_data[:, 165:].astype(float).transpose(1, 0),
+                                'aud_feat': audio_feat.astype(float).transpose(1, 0),
                                 # 'wv2_feat': wv2_feat.astype(np.float).transpose(1, 0),
                                 'video':self.video_input,
                                 'speaker': speaker_id[self.speaker],
                                 'aud_file': self.audio_fn,
                                 'betas': self.betas,
-                                "audio_token":audio_token.cpu().numpy()
+                                #"audio_token":audio_token.cpu().numpy()
                             }
                         else:
                             data_sample = {
-                                'poses': seq_data.astype(np.float).transpose(1, 0),
-                                'aud_feat': audio_feat.astype(np.float).transpose(1, 0),
+                                'poses': seq_data.astype(float).transpose(1, 0),
+                                'aud_feat': audio_feat.astype(float).transpose(1, 0),
                                 'speaker': speaker_id[self.speaker],
                                 'betas': self.betas,
                                 'video':self.video_input,
-                                "audio_token":audio_token.astype(np.float).transpose(1,0)
+                                #"audio_token":audio_token.astype(float).transpose(1,0)
 
                             }
                     return data_sample
                 else:
                     data_sample = {
-                        'poses': seq_data[:, :330].astype(np.float).transpose(1, 0),
+                        'poses': seq_data[:, :330].astype(float).transpose(1, 0),
                         'expression': seq_data[:, 330:].astype(np.float).transpose(1, 0),
                         # 'nzero': seq_data[:, 325:].astype(np.float).transpose(1, 0),
-                        'aud_feat': audio_feat.astype(np.float).transpose(1, 0),
+                        'aud_feat': audio_feat.astype(float).transpose(1, 0),
                         'aud_file': self.audio_fn,
                         'speaker': speaker_id[self.speaker],
                         'betas': self.betas,
                         'video':self.video_input,
-                        "audio_token":audio_token.astype(np.float).transpose(1,0)
+                        #"audio_token":audio_token.astype(float).transpose(1,0)
                     }
                     return data_sample
             def __len__(child):

@@ -94,9 +94,9 @@ def pred2poses(input, gt):
                        gt[0:1, 21:27].repeat(input.shape[0], 1),
                        input[:, 6:9],
                        gt[0:1, 30:36].repeat(input.shape[0], 1),
-                       input[:, 9:18],
+                       input[:, 9:12],
                        gt[0:1, 39:45].repeat(input.shape[0], 1),
-                       input[:, 18:]]
+                       input[:, 12:]]
                       , dim=1)
     return input
 

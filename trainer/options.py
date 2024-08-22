@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument('--face_model_name', default='s2g_face', type=str)
     parser.add_argument('--face_model_path', default='./experiments/2022-10-15-smplx_S2G-face-3d/ckpt-99.pth', type=str)
     parser.add_argument('--body_model_name', default='s2g_body_pixel', type=str)
-    parser.add_argument('--body_model_path', default='/mnt/nj-aigc/usr/pengwenshuo/TalkSHOW/xhs_eccv24_2.27/layer8_head8_repeat_half_testq/2024-02-27-smplx_S2G-body-pixel2/ckpt-299.pth', type=str)
+    parser.add_argument('--body_model_path', default='./viclip_lr1e-4_layer6_head8_repeat_half/2024-02-25-smplx_S2G-body-pixel2/ckpt-299.pth', type=str)
     parser.add_argument('--infer', action='store_true')
     return parser
 

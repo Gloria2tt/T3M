@@ -1,0 +1,15 @@
+numpy
+transformers
+matplotlib
+textgrid
+smplx
+scikit-learn
+pyrender
+trimesh
+tqdm
+librosa
+scipy
+python_speech_features
+opencv-python
+pyglet
+encodec

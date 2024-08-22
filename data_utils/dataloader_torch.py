@@ -182,7 +182,7 @@ class MultiVidData():
             #         self.complete_data.append(self.dataset[key].complete_data)
             # else:https://pytorch-tutorial-assets.s3.amazonaws.com/VOiCES_devkit/source-16k/train/sp0307/Lab41-SRI-VOiCES-src-sp0307-ch127535-sg0042.wav
             # if config.Model.model_type == 'face':
-            am = Wav2Vec2Processor.from_pretrained("/mnt/nj-aigc/dataset/pengwenshuo/wav2vec2-xls-r-300m-phoneme")
+            am = Wav2Vec2Processor.from_pretrained("/mnt/nj-1/usr/xuanqing/pws/dataset/wav2vec2-xls-r-300m-phoneme")
             am_sr = 16000
             # else:
             #     am, am_sr = None, None

@@ -287,7 +287,7 @@ class Trainer():
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                self.scheduler.step()
+                #self.scheduler.step()
                 
                 if epoch_loss_dict:#非空
                     for key in list(loss_dict.keys()):
@@ -309,12 +309,5 @@ class Trainer():
             # logging.info('learning rate:%d' % (self.generator.scheduler.get_lr()[0]))
             if (epoch+1)%self.config.Log.save_every == 0 or (epoch+1) == 30:
                 self.save_model(epoch)
-        self.plot_loss_curve()
 
-    def plot_loss_curve(self):
-        plt.plot(range(len(self.loss_nums)), self.loss_nums, label='Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title('Training Loss Curve')
-        plt.legend()
-        plt.savefig('loss_curve.png')  # Save the figure as loss_curve.png
+     # Save the figure as loss_curve.png

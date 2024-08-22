@@ -25,8 +25,11 @@ import math
 from data_utils.lower_body import c_index, c_index_3d, c_index_6d
 from data_utils.utils import smooth_geom, get_mfcc_sepa
 from nets.spg.qformer import qformer
-
-
+from nets.spg.new_qformer import qformer_new
+from nets.spg.q_net import qformer_net
+#from nets.spg.q_bert import qformer_bert
+from nets.spg.qformer_bert import qformer_bert
+from nets.spg.qformer_gpt import qformer_gpt
 class TrainWrapper(TrainWrapperBaseClass):
     '''
     a wrapper receving a batch from data_utils and calculate loss
@@ -48,8 +51,10 @@ class TrainWrapper(TrainWrapperBaseClass):
         self.bh_model = self.config.Model.bh_model
         self.q_config = self.bert_config
         self.iteration = iteration
-        
-
+        """if self.audio:
+            self.audioencoder = AudioEncoder(in_dim=128, num_hiddens=768, num_residual_layers=2, num_residual_hiddens=768).to(self.device)
+        else:
+            self.audioencoder = None"""
         if self.convert_to_6d:
             dim, layer = 512, 10
         else:
@@ -57,7 +62,7 @@ class TrainWrapper(TrainWrapperBaseClass):
         #self.generator = pixelcnn(2048, dim, layer, self.num_classes, self.audio, self.bh_model).to(self.device)
         
         
-        self.generator = qformer(batchsize = 128,
+        self.generator = qformer_gpt(batchsize = 128,
                  q_lenth = 44,
                  width = 768, 
                  embed_dim = 512,     
@@ -201,12 +206,13 @@ class TrainWrapper(TrainWrapperBaseClass):
         return LambdaLR(optimizer, _lr_lambda, last_epoch)
 
     def __call__(self, bat):
+        ## assert (not self.args.infer), "infer mode"
 
         self.global_step += 1
         total_loss = None
         loss_dict = {}
         aud, poses = bat['aud_feat'].to(self.device).to(torch.float32), bat['poses'].to(self.device).to(torch.float32)
-        
+        audio_token = bat['audio_token'].to(self.device)
         video_input =  bat["video"].to(self.device)
         id = bat['speaker'].to(self.device) - 20
         poses = poses[:, self.c_index, :]
@@ -222,15 +228,17 @@ class TrainWrapper(TrainWrapperBaseClass):
                 _, body_latents = self.g_body.encode(gt_poses=gt_poses[..., :self.each_dim[1]], id=id)###128x22
                 _, hand_latents = self.g_hand.encode(gt_poses=gt_poses[..., self.each_dim[1]:], id=id)
             latents = torch.cat([body_latents.unsqueeze(dim=-1), hand_latents.unsqueeze(dim=-1)], dim=-1)
+            #print("motion token",latents.shape)### 128x22x2
+            motion_token  = torch.cat([body_latents,hand_latents],dim=-1)+1048
             latents = latents.detach()
-            
+
         if self.audio:
             #motion_token = latents
             #audio = self.audioencoder(aud[:, :].transpose(1, 2), frame_num=latents.shape[1]*4).unsqueeze(dim=-1).repeat(1, 1, 1, 2)
             #logits = self.generator(latents[:, :], id, audio)
             #print("last check",aud.shape,video_input.shape)
             #logits = self.generator(aud,video_input,ablation=False)
-            logits = self.generator(aud,video_input,ablation=False)
+            logits = self.generator(aud,video_input,motion_token,ablation=False)
             #print("logits,",logits.shape)
             #print("pppp",logits.shape)
             #p. out = self.generator(aud,video_input)
@@ -242,8 +250,8 @@ class TrainWrapper(TrainWrapperBaseClass):
         #self.generator_optimizer.zero_grad()
         """if self.audio:
             self.audioencoder_optimizer.zero_grad()"""
-        
-        loss = F.cross_entropy(logits.view(-1, logits.shape[-1]), latents.view(-1))
+        latents_refine = latents+1048
+        loss = F.cross_entropy(logits.view(-1, logits.shape[-1]), latents_refine.view(-1))
         #p. loss = F.mse_loss(out,gt_poses)
         #loss.backward()
         grad = torch.nn.utils.clip_grad_norm(self.generator.parameters(), self.config.Train.max_gradient_norm)
@@ -279,18 +287,19 @@ class TrainWrapper(TrainWrapperBaseClass):
             model = EncodecModel.encodec_model_24khz(repository=Path("../dataset/encodec")).to('cuda')
             #aud_feat = get_mfcc_ta(aud_fn, sr=sr, fps=fps, smlpx=True, type='mfcc', am=am)
             aud_feat = get_encodec(aud_fn,model) #### 1xseqx128
-        
+        #print(aud_feat.shape)####seq x 128
         aud_feat = aud_feat.transpose(1, 0)### 128x384
         aud_feat = aud_feat[np.newaxis, ...].repeat(B, axis=0)### 1x128x384
         aud_feat = torch.tensor(aud_feat, dtype=torch.float32).to(self.device)
-
+       
         if id is None:
             id = torch.tensor([0]).to(self.device)
         else:
             id = id.repeat(B)
 
         with torch.no_grad():
-            aud_feat = aud_feat.permute(0, 2, 1)
+            aud_feat = aud_feat.permute(0, 2, 1)#### 1x384x128
+            print('audio_feat:', aud_feat.shape)
             if continuity:
                 self.audioencoder.eval()
                 pre_pose = {}
@@ -302,16 +311,44 @@ class TrainWrapper(TrainWrapperBaseClass):
                 body = torch.cat([body_0, body_1], dim=2)
                 hand = torch.cat([hand_0, hand_1], dim=2)
             else:
+                """if self.audio:
+                    self.audioencoder.eval()
+                    audio = self.audioencoder(aud_feat.transpose(1, 2), frame_num=frame).unsqueeze(dim=-1).repeat(1, 1, 1, 2)
+                    latents = self.generator.generate(id, shape=[audio.shape[2], 2], batch_size=B, aud_feat=audio)
+                else:
+                    latents = self.generator.generate(id, shape=[aud_feat.shape[1]//4, 2], batch_size=B)"""
                 if self.audio:
+                    if aud_feat.shape[1]>88:
+                        loop_ = aud_feat.shape[1]//88 #### 3
+                        print(loop_)
+                        for i in range(loop_):
+                            aud_feat_ = aud_feat[:,i*88:(i+1)*88,:]
+                            """if i!=loop_: ##### 88*3
+                                print("1111111111: ",i)
+                                aud_feat_ = aud_feat[:,i*88:(i+1)*88,:]
+                            else:
+                                aud_feat_ = aud_feat[:,i*88:,:]"""
+                            print('aud_clip:',aud_feat_.shape)
+                            latents = self.generator.generate_gpt(batch_size=B,aud_feat=aud_feat,text_feat=text_feat)-1048
+                            if i == 0:
+                                body_latents = latents[..., 0]
+                                hand_latents = latents[..., 1]
+                            else:
+                                body_latents = torch.cat([body_latents,latents[...,0]],dim=-1)
+                                hand_latents = torch.cat([hand_latents,latents[..., 1]],dim=-1)
+
                     #text_feat = torch.zeros((1,512)).to(self.device)
-                    latents = self.generator.generate(shape=[aud_feat.shape[1],2],batch_size=B,aud_feat=aud_feat,text_feat=text_feat)
-                
-                body_latents = latents[..., 0]
-                hand_latents = latents[..., 1]
+                    #latents = self.generator.generate(shape=[aud_feat.shape[1],2],batch_size=B,aud_feat=aud_feat,text_feat=text_feat)
+                    
+                    print(body_latents.shape,hand_latents.shape)
+                    #pred_poses = self.generator(aud_feat,text_feat)
+                #body_latents = latents[..., 0]
+                #hand_latents = latents[..., 1]
                 body, _ = self.g_body.decode(b=body_latents.shape[0], w=body_latents.shape[1], latents=body_latents)
                 hand, _ = self.g_hand.decode(b=hand_latents.shape[0], w=hand_latents.shape[1], latents=hand_latents)
 
             pred_poses = torch.cat([body, hand], dim=1).transpose(1,2).cpu().numpy()
+        print(pred_poses)
         output = pred_poses
         return output
 

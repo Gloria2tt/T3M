@@ -1,9 +1,7 @@
 import os
 import sys
 import OpenGL.GL as gl
-gl.glGetString(gl.GL_VERSION)  # 手动初始化OpenGL
-
-import pyrender
+gl.glGetString(gl.GL_VERSION) 
 # os.environ["PYOPENGL_PLATFORM"] = "egl"
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 sys.path.append(os.getcwd())
@@ -172,9 +170,10 @@ global_orient = torch.tensor([3.0747, -0.0158, -0.0152])
 
 def infer(g_body, g_face, smplx_model, rendertool, config, args,text):
     betas = torch.zeros([1, 300], dtype=torch.float64).to(device)
-    am = Wav2Vec2Processor.from_pretrained("/mnt/nj-aigc/dataset/pengwenshuo/wav2vec2-xls-r-300m-phoneme")
+    am = Wav2Vec2Processor.from_pretrained("../dataset/wav2vec2-xls-r-300m-phoneme")
     am_sr = 16000
-    text_feat = np.load('/mnt/nj-aigc/usr/pengwenshuo/test/text_1.npy')
+    text_feat = np.load('../test/text_14.npy')
+    text_feat = np.zeros_like(text_feat)
     text_feat = torch.from_numpy(text_feat).to('cuda')
     num_sample = args.num_sample
     cur_wav_file = args.audio_file

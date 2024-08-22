@@ -12,7 +12,7 @@
   },
 
   "Data": {
-    "data_root": "/mnt/nj-aigc/usr/pengwenshuo/TalkSHOW/ExpressiveWholeBodyDatasetReleaseV1.0",
+    "data_root": "./ExpressiveWholeBodyDatasetReleaseV1.0",
     "pklname": "_3d_encodec_viclip_200m_token.pkl",
     "whole_video": false,
     "pose": {
@@ -51,7 +51,7 @@
   },
 
   "Train": {
-    "epochs": 200,
+    "epochs": 300,
     "max_gradient_norm": 5,
     "learning_rate": {
       "generator_learning_rate": 1e-4,

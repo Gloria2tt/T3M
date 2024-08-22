@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from .blip import create_vit, init_tokenizer, load_checkpoint
 import math
 import torch.nn.init as init
+
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 1024):
         super().__init__()
@@ -51,116 +52,40 @@ class AudioEncoder(nn.Module):
         self._enc_3 = Res_CNR_Stack(self._num_hiddens, self._num_residual_layers, leaky=True)
 
     def forward(self, x, frame_num=0):
-        h = self.project(x)
-        #print('0',h.shape)  
+        h = self.project(x)  
         h = self._enc_1(h)
-        #print('1',h.shape)
         h = self._down_1(h)
-        #print(h.shape)
         h = self._enc_2(h)
-        #print(h.shape)
         h = self._down_2(h)
-        #print(h.shape)
         h = self._enc_3(h)
         return h
 
 
-class qformerEmbeddings(nn.Module):
-    """Construct the embeddings from word and position embeddings."""
 
-    def __init__(self, config):
-        super().__init__()
-        #self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
-        self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
-
-        # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
-        # any TensorFlow checkpoint file
-        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
-
-        # position_ids (1, len position emb) is contiguous in memory and exported when serialized
-        self.register_buffer("position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)))
-        self.position_embedding_type = getattr(config, "position_embedding_type", "absolute")
-        #self.audioencoder = AudioEncoder(in_dim=128,num_hiddens=)
-        self.config = config
-
-    def forward(
-        self, input_ids=None, position_ids=None, inputs_embeds=None, past_key_values_length=0
-    ):
-        if input_ids is not None:
-            input_shape = input_ids.size()
-        else:
-            input_shape = inputs_embeds.size()[:-1]
-
-        seq_length = input_shape[1]
-
-        if position_ids is None:
-            position_ids = self.position_ids[:, past_key_values_length : seq_length + past_key_values_length]
-
-        if inputs_embeds is None:
-            inputs_embeds = self.word_embeddings(input_ids)
-
-        embeddings = inputs_embeds
-
-        if self.position_embedding_type == "absolute":
-            position_embeddings = self.position_embeddings(position_ids)
-            embeddings += position_embeddings
-        embeddings = self.LayerNorm(embeddings)
-        embeddings = self.dropout(embeddings)
-        return embeddings
-
-class prompt_learners(nn.Module):
-    def __init__(self, batchsize,lenth,dim,random = True):
-        super().__init__()
-        self.seq_lenth = lenth
-        self.width = dim
-        self.random = random
-        if self.random:
-            vectors = torch.empty(batchsize,self.seq_lenth,self.width)
-            nn.init.normal_(vectors, std=0.02)
-        self.q_vectors = nn.Parameter(vectors)
-    
-    def forward(self,):
-        q_l = self.q_vectors
-        
-        return q_l
             
 
         
 class qformer(nn.Module):
-    def __init__(self,                 
-                 med_config = './config/bert_config.json', 
+    def __init__(self,                  
                  batchsize = 128 ,
                  q_lenth = 44,
                  width = 768, 
                  embed_dim = 512,     
                  codebook_size = 2048,
-                 num_layers = 8,
+                 num_layers = 6,
                  random = True,
                  num_q = 1
                  ):
         super().__init__()
-        encoder_config = BertConfig.from_json_file(med_config)
+
         
-        self.decoder_layer = nn.TransformerDecoderLayer(d_model=512,nhead=8,batch_first=True,activation="gelu")
-        self.position = PositionalEncoding(embed_dim, dropout=0.1)
+        self.decoder_layer = nn.TransformerDecoderLayer(d_model=512,nhead=8,batch_first=True,activation="relu")
+        self.position = PositionalEncoding(embed_dim, dropout=0)
         self.text_encoder = nn.TransformerDecoder(decoder_layer=self.decoder_layer,num_layers=num_layers)
-        #text_with = self.text_encoder.config.hidden_size
-        self.input_mlp = nn.Linear(512,1024)
-        self.input_mlp2 = nn.Linear(1024,codebook_size) 
-        #self.input_mlp = nn.Linear(128,embed_dim)
-        #self.input_mlp2 = nn.Linear(embed_dim,width)
-        self.embeddings = qformerEmbeddings(config = encoder_config)
         self.audioencoder = AudioEncoder(in_dim=128,num_hiddens=512,num_residual_layers=2,num_residual_hiddens=0)
         self.width = width
         self.proj = nn.Linear(512,codebook_size)
-        self.apply(self.weights_init)
-        #self.embedding = nn.Embedding(2048, 512) 
-
-        if random:
-            vectors = torch.empty(num_q,embed_dim)
-            nn.init.normal_(vectors, std=0.02)
-            self.q_vectors = nn.Parameter(vectors)
+        self.apply(self.weights_init) 
         self.num_q = num_q
 
     def weights_init(self, m):
@@ -178,91 +103,24 @@ class qformer(nn.Module):
         mask = mask.masked_fill(mask == 1, float(0.0))  # Convert ones to 0
         return mask
     
-    def forward(self,audio_feat,video_input,ablation=False,max_lenth = 150,use_q=False):
+    def forward(self,audio_feat,video_input,ablation=False):
         if not ablation:
             b,seq_len = audio_feat.shape[0],audio_feat.shape[1]
             audio_feat = self.audioencoder(audio_feat[:,:].transpose(1,2),frame_num = 0).transpose(1,2)### bx seqx 512
             inputs_embeds = audio_feat
             if len(video_input.shape) == 2:
                 video_input = video_input.unsqueeze(0)
-            
-                #q_feat  = self.q_vectors.unsqueeze(0).repeat(b,1,1)
-                #inputs_embeds = torch.cat([video_input,inputs_embeds],dim=1)
-            #audio_embeds = input_embeds
-            
             audio_embeds = self.position(inputs_embeds)
             #print(audio_embeds.shape)
             tgt_mask = self.get_tgt_mask(audio_embeds.shape[1], audio_embeds.device)
-            #video_input = video_input.repeat(1,seq_len//2,1) ### bx1x512 - b xseq/2 x 512 
-            #video_embeds = self.position(video_input) ## 300 - 500 - 300 - 150 diffusion 
-            
-            #print(video_input.shape)
-            video_input = video_input.repeat(1,1,1)
-            #video_embeds = self.position(video_input)
-            #video_embeds = video_input
-            #video_embeds = self.position(video_input)
-            out_put = self.text_encoder(tgt=audio_embeds,memory = video_input,tgt_mask=tgt_mask)
-            #out_put = self.audioencoder()
-            """if use_q:
-                out_put = out_put[:,:-1,:]"""
-            projhead = self.input_mlp(out_put)
-            projhead = self.input_mlp2(projhead)
-            #projhead = self.proj(out_put)
+            video_input = video_input.repeat(1,seq_len//2,1) 
+            video_embeds = self.position(video_input) 
+            out_put = self.text_encoder(tgt=audio_embeds,memory = video_embeds,tgt_mask=tgt_mask)
+            projhead = self.proj(out_put)
             try:
                 prjhead = projhead.view(b,-1,2,2048)
             except:
                 prjhead = projhead[:,:-1,:].view(b,-1,2,2048)
-        else:
-            b,seq_len = audio_feat.shape[0],audio_feat.shape[1]
-            #print(audio_feat.shape)
-            """audio_feat = self.input_mlp(audio_feat)
-            audio_feat = self.input_mlp2(audio_feat)
-            q_feat = self.q_embeddings()"""
-            audio_feat = self.audioencoder(audio_feat[:,:].transpose(1,2)).transpose(1,2)         
-            #print('audio shape:------',audio_feat.shape)
-            #audio_feat = audio_feat.view(b,-1,audio_feat.shape[-1])
-            #print('true last chec',audio_feat.shape,q_feat.shape,video_input.shape)
-            #inputs_embeds = torch.cat([audio_feat,q_feat],dim=1)
-            inputs_embeds = audio_feat
-            padded_input_emb = torch.zeros((b, max_lenth, 768), dtype=inputs_embeds.dtype, device=inputs_embeds.device)
-            padded_input_emb[:, :seq_len//2, :] = inputs_embeds[:, :, :]
-            #padded_input_emb = torch.nn.utils.rnn.pad_sequence(inputs_embeds, batch_first=True, padding_value=0.0, maxlen=max_lenth)
-            print(padded_input_emb.shape)
-            audio_embeds = self.embeddings(inputs_embeds=padded_input_emb)
-            mask = torch.zeros((b, max_lenth), dtype=torch.float32, device=inputs_embeds.device) ##### b x seq_di
-            mask[:, :seq_len] = 1.0
-            mask = mask.type(torch.float32)
-            #audio_atts = torch.ones(audio_embeds.size()[:-1],dtype=torch.long).to(audio_feat.device)
-            #attention_mask = torch.ones([b,seq_len])
-            #video_feat = video_input.repeat(1,44,1)
-            #video_embeds = self.embeddings(inputs_embeds = video_feat)
-            #video_atts = torch.ones(video_embeds.size()[:-1],dtype=torch.long).to(video_input.device)
-            """b,seq_len = audio_feat.shape[0],audio_feat.shape[1]
-            
-            audio_feat = self.input_mlp(audio_feat)
-            audio_feat = self.input_mlp2(audio_feat)
-            #q_feat = self.q_embeddings()
-            #print('true last chec',audio_feat.shape,q_feat.shape,video_input.shape)
-            inputs_embeds = torch.cat([audio_feat,q_feat],dim=1)
-            audio_embeds = self.embeddings(inputs_embeds=inputs_embeds)
-            audio_atts = torch.ones(audio_embeds.size()[:-1],dtype=torch.long).to(audio_feat.device)"""
-            #attention_mask = torch.ones([b,seq_len])
-            """video_feat = video_input.repeat(1,44,1)
-            video_embeds = self.embeddings(inputs_embeds = video_feat)
-            video_atts = torch.ones(video_embeds.size()[:-1],dtype=torch.long).to(video_input.device)"""
-            out_put = self.text_encoder(inputs_embeds=audio_embeds,
-                                        attention_mask = mask,
-                                        return_dict = True,
-                                        mode = 'text'
-                                        )
-            
-            return_out = out_put.last_hidden_state[:,:seq_len//2,:]
-            
-            projhead = self.proj(return_out)
-            prjhead = projhead.view(b,-1,2,2048)
-            #print(projhead.shape
-            #)
-        
         return prjhead
 
     def generate(self,shape=(8,8),batch_size=64,aud_feat=None,text_feat=None): ### 22x2
@@ -278,12 +136,11 @@ class qformer(nn.Module):
 
         h0 = 0
         print(x.shape)
-        h = shape[0] ####300
+        h = shape[0] 
         print(shape)
         for i in range(h0,h):
             for j in range(shape[1]):
                 logits = self.forward(aud_feat,text_feat,ablation=False).permute(0, 3, 1, 2).contiguous()
-                #print(logits.shape)
                 probs = F.softmax(logits[:, :, i, j], -1)
                 x.data[:, i, j].copy_(
                     probs.multinomial(1).squeeze().data

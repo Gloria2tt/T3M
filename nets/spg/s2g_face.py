@@ -166,7 +166,7 @@ class Generator(nn.Module):
             self.audio_encoder = MeshtalkEncoder(latent_dim=in_dim)
         elif self.encoder_choice == 'faceformer':
             # wav2vec 2.0 weights initialization
-            self.audio_encoder = Wav2Vec2Model.from_pretrained("/mnt/nj-aigc/dataset/pengwenshuo/wav2vec2-base-960h")  # "vitouphy/wav2vec2-xls-r-300m-phoneme""facebook/wav2vec2-base-960h"
+            self.audio_encoder = Wav2Vec2Model.from_pretrained("../dataset/wav2vec2-base-960h")  # "vitouphy/wav2vec2-xls-r-300m-phoneme""facebook/wav2vec2-base-960h"
             self.audio_encoder.feature_extractor._freeze_parameters()
             self.audio_feature_map = nn.Linear(768, in_dim)
         else:
