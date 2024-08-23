@@ -27,8 +27,8 @@ To use this project, follow these steps:
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/Gloria2tt/NAACL2024-T3M.git
-    cd NAACL2024-T3M
+    git clone https://github.com/Gloria2tt/T3M.git
+    cd T3M
 2. Download the dataset and pre-trained weight:
     
     We provide an enhanced approach compared to the original papers by utilizing a more advanced video-text alignment model, [InternVid](https://github.com/OpenGVLab/InternVideo/tree/main/Data/InternVid), to extract video embeddings from the SHOW dataset.
