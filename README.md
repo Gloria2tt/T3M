@@ -82,5 +82,5 @@ If you find our work interesting, please consider citing:
 
 ## contact
 
-Any questions just send me an email(gin2pws@gmail.com) derectly.
+Any questions just send me an email(gin2pws@gmail.com) directly.
 
