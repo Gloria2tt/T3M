@@ -41,7 +41,7 @@ To use this project, follow these steps:
     - Extract the audio-aligned segments from the video based on the file names, and use the video encoder from InternVid to extract the video embeddings. We recommend performing this step on A100 or H100 GPUs.
 
     - Following the instructions in the TalkSHOW repository, download the pre-trained face model and VQ-VAE model from [this](https://drive.google.com/file/d/1bC0ZTza8HOhLB46WOJ05sBywFvcotDZG/view), as our paper modifies only the body and hand generation parts.
-    - I find that the SHOW repository no longer hosts the original videos. I will be releasing the preprocessed data shortly.
+    - I've noticed that the SHOW repository no longer contains the original videos. Therefore, we've established a new repository to facilitate the download of the preprocessed dataset, which you can find [here](https://huggingface.co/Wenshuo1/t3m_dataset/tree/main)
 
 ### Train
 To train the model, you need to modify the body_pixel.json configuration file to match your environment:
