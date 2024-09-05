@@ -1,4 +1,4 @@
-# T3M: Text Guided 3D Human Motion Synthesis from Speech
+# T3M: Text Guided 3D Human Motion Synthesis from Speech[NAACL 2024]
 This repository contains the PyTorch implementation of the "T3M: Text Guided 3D Human Motion Synthesis from Speech" project. The goal of this project is to synthesize realistic 3D human motion based on both speech and text inputs.
 ![teaser](visualise/image.png)
 
