@@ -80,9 +80,11 @@ If you find our work interesting, please consider citing:
     pages={1168--1177},
     year={2024}
     }
+    
 ## Acknowledgement
 Our code is built upon [TalkSHOW](https://github.com/yhw-yhw/TalkSHOW) and [SHOW](https://github.com/yhw-yhw/SHOW). We specifically thanks [Hongwei Yi](https://xyyhw.top/) for sharing their codebase.
 )## contact
 
+## Contact
 Any questions just send me an email(gin2pws@gmail.com) directly.
 
