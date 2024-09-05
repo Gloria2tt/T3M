@@ -81,7 +81,7 @@ If you find our work interesting, please consider citing:
     year={2024}
     }
 ## Acknowledgement
-Our code is built upon [TalkSHOW](https://github.com/yhw-yhw/TalkSHOW) and [SHOW](https://github.com/yhw-yhw/SHOW). We specifically thanks Hongwei Yi(https://xyyhw.top/) for sharing their codebaseß.
+Our code is built upon [TalkSHOW](https://github.com/yhw-yhw/TalkSHOW) and [SHOW](https://github.com/yhw-yhw/SHOW). We specifically thanks [Hongwei Yi](https://xyyhw.top/) for sharing their codebase.
 )## contact
 
 Any questions just send me an email(gin2pws@gmail.com) directly.
